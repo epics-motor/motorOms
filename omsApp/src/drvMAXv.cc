@@ -185,7 +185,7 @@ static int greycodeConfigFlags[MAXv_NUM_CARDS] = {0};
 /* Common local function declarations. */
 extern "C" {
 RTN_STATUS MAXvSetup(int, int, unsigned int, unsigned int, int, int);
-RTN_VALUES MAXvConfig(int, const char *, int);
+RTN_STATUS MAXvConfig(int, const char *, int, int);
 }
 static long report(int);
 static long init();
@@ -1027,7 +1027,7 @@ MAXvSetup(int num_cards,        /* maximum number of cards in rack */
     return(rtncode);
 }
 
-RTN_VALUES MAXvConfig(int card,                 /* number of card being configured */
+RTN_STATUS MAXvConfig(int card,                 /* number of card being configured */
                       const char *initstr,      /* configuration string */
                       int AbsConfig,            /* absolute encoder configuration */
                       int GreyConfig)           /* absolute encoder grey code configuration */
