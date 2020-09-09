@@ -227,7 +227,9 @@ static int getPositions(int card, epicsInt32 *positions, int nPositions) {
     return(0);
 }
 
+#ifdef USE_DEVLIB
 static void motorIsr(int);
+#endif
 static int motor_init();
 static void MAXv_reset(void *);
 static char *readbuf(volatile struct MAXv_motor *, char *);
@@ -935,7 +937,7 @@ MAXvSetup(int num_cards,        /* maximum number of cards in rack */
             }
             else
             {
-                MAXv_addrs = (char *) addrs;
+                MAXv_addrs = (char *) (size_t) addrs;
                 MAXv_brd_size = 0x1000;
             }
             break;
@@ -948,7 +950,7 @@ MAXvSetup(int num_cards,        /* maximum number of cards in rack */
             }
             else
             {
-                MAXv_addrs = (char *) addrs;
+                MAXv_addrs = (char *) (size_t) addrs;
                 MAXv_brd_size = 0x10000;
             }
             break;
@@ -961,7 +963,7 @@ MAXvSetup(int num_cards,        /* maximum number of cards in rack */
             }
             else
             {
-                MAXv_addrs = (char *) addrs;
+                MAXv_addrs = (char *) (size_t) addrs;
                 MAXv_brd_size = 0x1000000;
             }
             break;
@@ -1059,6 +1061,7 @@ RTN_STATUS MAXvConfig(int card,                 /* number of card being configur
 /* Interrupt service routine.                        */
 /* motorIsr()                                        */
 /*****************************************************/
+#ifdef USE_DEVLIB
 static void motorIsr(int card)
 {
     volatile struct controller *pmotorState;
@@ -1098,6 +1101,7 @@ static void motorIsr(int card)
 
     pmotor->status1_flag.All = status1_flag.All; /* Release IRQ's. */
 }
+#endif
 
 static int motorIsrSetup(int card)
 {
@@ -1120,7 +1124,7 @@ static int motorIsrSetup(int card)
 #else
         (void (*)(void *)) motorIsr,
 #endif
-        (void *) card);
+        (void *) (size_t) card);
 
     if (!RTN_SUCCESS(status))
     {
@@ -1188,23 +1192,27 @@ static int motor_init()
 
     for (card_index = 0; card_index < MAXv_num_cards; card_index++)
     {
+#ifdef USE_DEVLIB
         epicsInt8 *startAddr;
         epicsInt8 *endAddr;
+#endif
         bool wdtrip;
         int rtn_code;
 
         Debug(2, "motor_init: card %d\n", card_index);
 
         probeAddr = MAXv_addrs + (card_index * MAXv_brd_size);
+#ifdef USE_DEVLIB
         startAddr = (epicsInt8 *) probeAddr;
         endAddr = startAddr + MAXv_brd_size;
+#endif
 
         Debug(9, "motor_init: devNoResponseProbe() on addr %p\n", probeAddr);
         /* Scan memory space to assure card id */
 #ifdef USE_DEVLIB
         do
         {
-            status = devNoResponseProbe(MAXv_ADDRS_TYPE, (unsigned int) startAddr, 2);
+            status = devNoResponseProbe(MAXv_ADDRS_TYPE, (size_t) startAddr, 2);
             startAddr += (MAXv_brd_size / 10);
         } while (PROBE_SUCCESS(status) && startAddr < endAddr);
 #endif
@@ -1222,8 +1230,8 @@ static int motor_init()
         Debug(9, "motor_init: devRegisterAddress() status = %d\n", (int) status);
         if (!RTN_SUCCESS(status))
         {
-            errPrintf(status, __FILE__, __LINE__, "Can't register address 0x%x\n",
-                      (unsigned int) probeAddr);
+            errPrintf(status, __FILE__, __LINE__, "Can't register address %p\n",
+                      probeAddr);
             motor_state[card_index] = (struct controller *) NULL;
             goto loopend;
         }
