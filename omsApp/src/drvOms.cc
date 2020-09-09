@@ -1005,6 +1005,7 @@ static void motorIsrDisable(int card)
 /* Configuration function for  module_types data     */
 /* areas. omsSetup()                                */
 /*****************************************************/
+extern "C"
 RTN_STATUS
 omsSetup(int num_cards,  /* maximum number of cards in rack */
          void *addrs,    /* Base Address(see README for details) */

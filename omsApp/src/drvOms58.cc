@@ -916,8 +916,9 @@ static int recv_mess(int card, char *com, int amount)
 
 /*****************************************************/
 /* Configuration function for  module_types data     */
-/* areas. omsSetup()                                */
+/* areas. oms58Setup()                                */
 /*****************************************************/
+extern "C"
 RTN_STATUS
 oms58Setup(int num_cards,   /* maximum number of cards in rack */
            void *addrs,     /* Base Address(0x0-0xb000 on 4K boundary) */
