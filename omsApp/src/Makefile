@@ -29,6 +29,7 @@ SRCS += devMAXv.cc drvMAXv.cc
 ifdef SNCSEQ
 ifdef ASYN
 SRCS += MAX_trajectoryScan.st
+DBD += MAX_trajectoryScan.dbd
 endif
 endif
 
