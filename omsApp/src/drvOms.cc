@@ -261,10 +261,14 @@ static int set_status(int card, int signal)
     bool ls_active = false;
     msta_field status;
     struct controller *pmotorState;
-    struct vmex_motor *pmotor;
+    volatile struct vmex_motor *pmotor;
 
-    if ((pmotorState = motor_state[card]) == NULL ||
-        (pmotor = (struct vmex_motor *) pmotorState->localaddr) == NULL)
+    pmotorState = motor_state[card];
+    if (!pmotorState)
+        return(rtn_state = 1); /* End move. */
+
+    pmotor = (volatile struct vmex_motor *) pmotorState->localaddr;
+    if (!pmotor)
         return(rtn_state = 1); /* End move. */
 
     motor_info = &(pmotorState->motor_info[signal]);
@@ -818,6 +822,7 @@ static int omsError(int card)
     return(rtnStat);
 }
 
+static volatile epicsUInt8 doneFlags;
 
 /*****************************************************/
 /* Interrupt service routine.                        */
@@ -830,7 +835,6 @@ static void motorIsr(int card)
     struct irqdatastr *irqdata;
     epicsUInt8 control;
     epicsUInt8 status;
-    epicsUInt8 doneFlags;
     char dataChar;
     static char errmsg1[] = "\ndrvOms.cc:motorIsr: Invalid entry - card xx\n";
     static char errmsg2[] = "\ndrvOms.cc:motorIsr: command error - card xx\n";
@@ -903,18 +907,19 @@ static void motorIsr(int card)
     control = pmotor->control;  /* Read it back to flush last write cycle. */
 }
 
+static volatile epicsUInt8 cardStatus;
+
 static int motorIsrEnable(int card)
 {
     volatile struct controller *pmotorState;
     volatile struct vmex_motor *pmotor;
     struct irqdatastr *irqdata;
-    epicsUInt8 cardStatus;
 
     Debug(5, "motorIsrEnable: Entry card#%d\n", card);
 
     pmotorState = motor_state[card];
     irqdata = (struct irqdatastr *) pmotorState->DevicePrivate;
-    pmotor = (struct vmex_motor *) (pmotorState->localaddr);
+    pmotor = (volatile struct vmex_motor *) (pmotorState->localaddr);
 
     {
         long status;
@@ -925,7 +930,7 @@ static int motorIsrEnable(int card)
 #else
                                                           (void (*)(void *)) motorIsr,
 #endif
-                                                          (void *) card);
+                                                          (void *) (size_t) card);
 
         if (!RTN_SUCCESS(status))
         {
@@ -1112,7 +1117,7 @@ static int motor_init()
                 return(ERROR);
             }
             Debug(9, "motor_init: localaddr = %p\n", localaddr);
-            pmotor = (struct vmex_motor *) localaddr;
+            pmotor = (volatile struct vmex_motor *) localaddr;
 
             Debug(9, "motor_init: malloc'ing motor_state\n");
             motor_state[card_index] = (struct controller *) malloc(sizeof(struct controller));
@@ -1219,13 +1224,13 @@ static int motor_init()
 static void oms_reset(void *arg)
 {
     short card;
-    struct vmex_motor *pmotor;
+    volatile struct vmex_motor *pmotor;
 
     for (card = 0; card < total_cards; card++)
     {
         if (motor_state[card] != NULL)
         {
-            pmotor = (struct vmex_motor *) motor_state[card]->localaddr;
+            pmotor = (volatile struct vmex_motor *) motor_state[card]->localaddr;
             pmotor->control = IRQ_RESET_ID;    /* Disable all interrupts. */
         }
     }

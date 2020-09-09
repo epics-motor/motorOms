@@ -147,7 +147,7 @@ struct driver_table OmsPC68_access =
     oms_axis
 };
 
-struct
+static struct
 {
     long number;
     long (*report) (int);
@@ -657,11 +657,10 @@ static int omsGet(int card, char *pchar)
 {
     int         eomReason;
     size_t      nread;
-    asynStatus  status;
     struct OmsPC68controller *cntrl;
     
     cntrl = (struct OmsPC68controller *) motor_state[card]->DevicePrivate;
-    status = cntrl->pasynOctet->read(cntrl->octetPvt,cntrl->pasynUser,pchar,1,&nread,&eomReason);
+    cntrl->pasynOctet->read(cntrl->octetPvt,cntrl->pasynUser,pchar,1,&nread,&eomReason);
 
     return(nread);
 }
@@ -685,10 +684,12 @@ static void asynCallback(void *drvPvt,asynUser *pasynUser,char *data,size_t len,
     stat = (d & 0x0000FF00) >> 8;
 
     if( stat & STAT_DONE )
+    {
         if( stat & STAT_ERROR_MSK )
             ++pcntrl->errcnt;
         else
             motor_sem.signal();
+    }
 
 //printf("drvOmsPC68:asynCallback - card %2.2d, error %d, status 0x%8.8X\n",pcntrl->card,pcntrl->errcnt,d);
 
