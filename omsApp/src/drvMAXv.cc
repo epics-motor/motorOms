@@ -126,11 +126,6 @@ USAGE...        Motor record driver level support for OMS model MAXv.
 /* Define for return test on devNoResponseProbe() */
 #define PROBE_SUCCESS(STATUS) ((STATUS)==S_dev_addressOverlap)
 
-/* Are we using VME-Bus/devLib */
-#if (defined(vxWorks) || defined(__rtems__))
-    #define USE_DEVLIB
-#endif
-
 /* jps: INFO messages - add RV and move QA to top */
 #define AXIS_INFO       "QA"
 #define ENCODER_QUERY   "EA ID"
@@ -227,9 +222,7 @@ static int getPositions(int card, epicsInt32 *positions, int nPositions) {
     return(0);
 }
 
-#ifdef USE_DEVLIB
 static void motorIsr(int);
-#endif
 static int motor_init();
 static void MAXv_reset(void *);
 static char *readbuf(volatile struct MAXv_motor *, char *);
@@ -1061,7 +1054,6 @@ RTN_STATUS MAXvConfig(int card,                 /* number of card being configur
 /* Interrupt service routine.                        */
 /* motorIsr()                                        */
 /*****************************************************/
-#ifdef USE_DEVLIB
 static void motorIsr(int card)
 {
     volatile struct controller *pmotorState;
@@ -1101,21 +1093,16 @@ static void motorIsr(int card)
 
     pmotor->status1_flag.All = status1_flag.All; /* Release IRQ's. */
 }
-#endif
 
 static int motorIsrSetup(int card)
 {
     volatile struct MAXv_motor *pmotor;
     STATUS1 status1_irq;
-#ifdef USE_DEVLIB
     long status;
-#endif
 
     Debug(5, "motorIsrSetup: Entry card#%d\n", card);
 
     pmotor = (struct MAXv_motor *) (motor_state[card]->localaddr);
-
-#ifdef USE_DEVLIB
 
     status = pdevLibVirtualOS->pDevConnectInterruptVME(
         MAXvInterruptVector + card,
@@ -1139,8 +1126,6 @@ static int motorIsrSetup(int card)
         errPrintf(status, __FILE__, __LINE__, "Can't enable enterrupt level %d\n", omsInterruptLevel);
         return (ERROR);
     }
-
-#endif
 
     /* Setup card for interrupt-on-done */
     status1_irq.All = 0;
@@ -1192,30 +1177,24 @@ static int motor_init()
 
     for (card_index = 0; card_index < MAXv_num_cards; card_index++)
     {
-#ifdef USE_DEVLIB
         epicsInt8 *startAddr;
         epicsInt8 *endAddr;
-#endif
         bool wdtrip;
         int rtn_code;
 
         Debug(2, "motor_init: card %d\n", card_index);
 
         probeAddr = MAXv_addrs + (card_index * MAXv_brd_size);
-#ifdef USE_DEVLIB
         startAddr = (epicsInt8 *) probeAddr;
         endAddr = startAddr + MAXv_brd_size;
-#endif
 
         Debug(9, "motor_init: devNoResponseProbe() on addr %p\n", probeAddr);
         /* Scan memory space to assure card id */
-#ifdef USE_DEVLIB
         do
         {
             status = devNoResponseProbe(MAXv_ADDRS_TYPE, (size_t) startAddr, 2);
             startAddr += (MAXv_brd_size / 10);
         } while (PROBE_SUCCESS(status) && startAddr < endAddr);
-#endif
         if (!PROBE_SUCCESS(status))
         {
             Debug(3, "motor_init: Card NOT found!\n");
@@ -1223,7 +1202,6 @@ static int motor_init()
             goto loopend;
         }
 
-#ifdef USE_DEVLIB
         status = devRegisterAddress(__FILE__, MAXv_ADDRS_TYPE,
                                     (size_t) probeAddr, MAXv_brd_size,
                                     (volatile void **) &localaddr);
@@ -1235,7 +1213,6 @@ static int motor_init()
             motor_state[card_index] = (struct controller *) NULL;
             goto loopend;
         }
-#endif
 
         Debug(9, "motor_init: localaddr = %p\n", localaddr);
         pmotor = (struct MAXv_motor *) localaddr;
