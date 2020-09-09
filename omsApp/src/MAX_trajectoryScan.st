@@ -1183,7 +1183,10 @@ static double rawToUser(int raw, double off, int dir, double res) {
 
 /**************************************************************************************/
 static int loadTrajectory(SS_ID ssId, struct UserVar *pVar, int simMode) {
-	int i, j, k, n, currUpdateRate;
+	int i, j, k, n;
+#if 0
+        int currUpdateRate;
+#endif
 	int onMask=0, offMask=0, outMask=0;
 	int segment_accel, segment_decel, segment_v_start, segment_v_end;
 	char absRel;
@@ -1246,7 +1249,9 @@ static int loadTrajectory(SS_ID ssId, struct UserVar *pVar, int simMode) {
 	sprintf(stringOut, "AX; #UR?;");
 	writeRead(ssId, pVar, stringOut, stringOut);
 	if (pVar->debugLevel > 0) printf("Update rate ='%s'\n", stringOut);
+#if 0
 	currUpdateRate = atol(stringOut);
+#endif
 
 	epicsTimeGetCurrent(&eStartTime); /* not actually the start time, getMotorPositions just needs a value */
 	getMotorPositions(ssId, pVar, pVar->motorCurrent, pVar->motorCurrentRaw, &(pVar->dtime));
