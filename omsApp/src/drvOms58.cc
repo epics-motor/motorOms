@@ -1158,7 +1158,7 @@ static int motor_init()
         /* Scan memory space to assure card id */
         do
         {
-            status = devNoResponseProbe(OMS_ADDRS_TYPE, (unsigned int) startAddr, 2);
+            status = devNoResponseProbe(OMS_ADDRS_TYPE, (size_t) startAddr, 2);
             startAddr += 0x100;
         } while (PROBE_SUCCESS(status) && startAddr < endAddr);
         if (PROBE_SUCCESS(status))
@@ -1169,8 +1169,8 @@ static int motor_init()
             Debug(9, "motor_init: devRegisterAddress() status = %d\n", (int) status);
             if (!RTN_SUCCESS(status))
             {
-                errPrintf(status, __FILE__, __LINE__, "Can't register address 0x%x\n",
-                          (unsigned int) probeAddr);
+                errPrintf(status, __FILE__, __LINE__, "Can't register address %p\n",
+                          probeAddr);
                 return(ERROR);
             }
             Debug(9, "motor_init: localaddr = %p\n", localaddr);
