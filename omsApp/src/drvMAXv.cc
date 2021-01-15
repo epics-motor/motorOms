@@ -126,11 +126,6 @@ USAGE...        Motor record driver level support for OMS model MAXv.
 /* Define for return test on devNoResponseProbe() */
 #define PROBE_SUCCESS(STATUS) ((STATUS)==S_dev_addressOverlap)
 
-/* Are we using VME-Bus/devLib */
-#if (defined(vxWorks) || defined(__rtems__))
-    #define USE_DEVLIB
-#endif
-
 /* jps: INFO messages - add RV and move QA to top */
 #define AXIS_INFO       "QA"
 #define ENCODER_QUERY   "EA ID"
@@ -185,7 +180,7 @@ static int greycodeConfigFlags[MAXv_NUM_CARDS] = {0};
 /* Common local function declarations. */
 extern "C" {
 RTN_STATUS MAXvSetup(int, int, unsigned int, unsigned int, int, int);
-RTN_VALUES MAXvConfig(int, const char *, int);
+RTN_STATUS MAXvConfig(int, const char *, int, int);
 }
 static long report(int);
 static long init();
@@ -935,7 +930,7 @@ MAXvSetup(int num_cards,        /* maximum number of cards in rack */
             }
             else
             {
-                MAXv_addrs = (char *) addrs;
+                MAXv_addrs = (char *) (size_t) addrs;
                 MAXv_brd_size = 0x1000;
             }
             break;
@@ -948,7 +943,7 @@ MAXvSetup(int num_cards,        /* maximum number of cards in rack */
             }
             else
             {
-                MAXv_addrs = (char *) addrs;
+                MAXv_addrs = (char *) (size_t) addrs;
                 MAXv_brd_size = 0x10000;
             }
             break;
@@ -961,7 +956,7 @@ MAXvSetup(int num_cards,        /* maximum number of cards in rack */
             }
             else
             {
-                MAXv_addrs = (char *) addrs;
+                MAXv_addrs = (char *) (size_t) addrs;
                 MAXv_brd_size = 0x1000000;
             }
             break;
@@ -1027,7 +1022,7 @@ MAXvSetup(int num_cards,        /* maximum number of cards in rack */
     return(rtncode);
 }
 
-RTN_VALUES MAXvConfig(int card,                 /* number of card being configured */
+RTN_STATUS MAXvConfig(int card,                 /* number of card being configured */
                       const char *initstr,      /* configuration string */
                       int AbsConfig,            /* absolute encoder configuration */
                       int GreyConfig)           /* absolute encoder grey code configuration */
@@ -1103,15 +1098,11 @@ static int motorIsrSetup(int card)
 {
     volatile struct MAXv_motor *pmotor;
     STATUS1 status1_irq;
-#ifdef USE_DEVLIB
     long status;
-#endif
 
     Debug(5, "motorIsrSetup: Entry card#%d\n", card);
 
     pmotor = (struct MAXv_motor *) (motor_state[card]->localaddr);
-
-#ifdef USE_DEVLIB
 
     status = pdevLibVirtualOS->pDevConnectInterruptVME(
         MAXvInterruptVector + card,
@@ -1120,7 +1111,7 @@ static int motorIsrSetup(int card)
 #else
         (void (*)(void *)) motorIsr,
 #endif
-        (void *) card);
+        (void *) (size_t) card);
 
     if (!RTN_SUCCESS(status))
     {
@@ -1135,8 +1126,6 @@ static int motorIsrSetup(int card)
         errPrintf(status, __FILE__, __LINE__, "Can't enable enterrupt level %d\n", omsInterruptLevel);
         return (ERROR);
     }
-
-#endif
 
     /* Setup card for interrupt-on-done */
     status1_irq.All = 0;
@@ -1201,13 +1190,11 @@ static int motor_init()
 
         Debug(9, "motor_init: devNoResponseProbe() on addr %p\n", probeAddr);
         /* Scan memory space to assure card id */
-#ifdef USE_DEVLIB
         do
         {
-            status = devNoResponseProbe(MAXv_ADDRS_TYPE, (unsigned int) startAddr, 2);
+            status = devNoResponseProbe(MAXv_ADDRS_TYPE, (size_t) startAddr, 2);
             startAddr += (MAXv_brd_size / 10);
         } while (PROBE_SUCCESS(status) && startAddr < endAddr);
-#endif
         if (!PROBE_SUCCESS(status))
         {
             Debug(3, "motor_init: Card NOT found!\n");
@@ -1215,19 +1202,17 @@ static int motor_init()
             goto loopend;
         }
 
-#ifdef USE_DEVLIB
         status = devRegisterAddress(__FILE__, MAXv_ADDRS_TYPE,
                                     (size_t) probeAddr, MAXv_brd_size,
                                     (volatile void **) &localaddr);
         Debug(9, "motor_init: devRegisterAddress() status = %d\n", (int) status);
         if (!RTN_SUCCESS(status))
         {
-            errPrintf(status, __FILE__, __LINE__, "Can't register address 0x%x\n",
-                      (unsigned int) probeAddr);
+            errPrintf(status, __FILE__, __LINE__, "Can't register address %p\n",
+                      probeAddr);
             motor_state[card_index] = (struct controller *) NULL;
             goto loopend;
         }
-#endif
 
         Debug(9, "motor_init: localaddr = %p\n", localaddr);
         pmotor = (struct MAXv_motor *) localaddr;
