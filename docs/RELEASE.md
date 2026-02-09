@@ -1,5 +1,22 @@
 # motorOms Releases
 
+## __R1-2-1 (2026-02-09)__
+R1-2-1 is a release based on the master branch.
+
+### Changes since R1-2
+
+#### New features
+* None
+
+#### Modifications to existing features
+* None
+
+#### Bug fixes
+* Pull request [#12](https://github.com/epics-motor/motorOms/pull/12): Allow the encoder ratio to be negative when motor and encoder have opposite senses of direction
+
+#### Continuous integration
+* Upgraded ci-scripts (v3.4.1)
+
 ## __R1-2 (2023-04-12)__
 R1-2 is a release based on the master branch.
 
